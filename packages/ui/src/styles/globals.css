@@ -48,6 +48,23 @@
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
     --font-sans: var(--font-sans);
+
+    /* Brand accent colors */
+    --color-brand: var(--brand);
+    --color-brand-foreground: var(--brand-foreground);
+    --color-brand-muted: var(--brand-muted);
+
+    /* Custom animation durations */
+    --animate-float: float 6s ease-in-out infinite;
+    --animate-float-delayed: float 6s ease-in-out 2s infinite;
+    --animate-pulse-glow: pulse-glow 3s ease-in-out infinite;
+    --animate-typing-cursor: typing-cursor 1s step-end infinite;
+    --animate-fade-in-up: fade-in-up 0.6s ease-out forwards;
+    --animate-fade-in-up-delayed: fade-in-up 0.6s ease-out 0.2s forwards;
+    --animate-slide-in-left: slide-in-left 0.5s ease-out forwards;
+    --animate-slide-in-right: slide-in-right 0.5s ease-out forwards;
+    --animate-gradient-x: gradient-x 6s ease infinite;
+    --animate-shimmer: shimmer 2s linear infinite;
 }
 
 :root {
@@ -83,22 +100,27 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+
+    /* Brand: Violet-Blue */
+    --brand: oklch(0.55 0.25 270);
+    --brand-foreground: oklch(0.985 0 0);
+    --brand-muted: oklch(0.55 0.25 270 / 15%);
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
+    --background: oklch(0.13 0.005 285);
     --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
+    --card: oklch(0.17 0.005 285);
     --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
+    --popover: oklch(0.17 0.005 285);
     --popover-foreground: oklch(0.985 0 0);
     --primary: oklch(0.922 0 0);
     --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
+    --secondary: oklch(0.22 0.005 285);
     --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
+    --muted: oklch(0.22 0.005 285);
     --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
+    --accent: oklch(0.22 0.005 285);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
@@ -109,14 +131,75 @@
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
+    --sidebar: oklch(0.15 0.005 285);
     --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary: oklch(0.65 0.25 270);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent: oklch(0.22 0.005 285);
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+
+    /* Brand: Brighter in dark mode */
+    --brand: oklch(0.65 0.25 270);
+    --brand-foreground: oklch(0.985 0 0);
+    --brand-muted: oklch(0.65 0.25 270 / 15%);
+}
+
+/* Keyframes */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 0.4; filter: blur(40px); }
+    50% { opacity: 0.8; filter: blur(60px); }
+}
+
+@keyframes typing-cursor {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes gradient-x {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes typing-dots {
+    0%, 60%, 100% { opacity: 0; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-4px); }
+}
+
+@keyframes cursor-blink {
+    0%, 100% { border-color: var(--brand); }
+    50% { border-color: transparent; }
+}
+
+@keyframes live-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0; }
 }
 
 @layer base {
@@ -126,4 +209,87 @@
   body {
     @apply bg-background text-foreground;
     }
+}
+
+/* Utility classes */
+@layer utilities {
+  .glass-card {
+    background-color: color-mix(in oklch, var(--card) 60%, transparent);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+  }
+
+  .glass-card-hover {
+    background-color: color-mix(in oklch, var(--card) 60%, transparent);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+    transition: all 0.3s ease;
+  }
+
+  .glass-card-hover:hover {
+    border-color: color-mix(in oklch, var(--brand) 30%, transparent);
+    box-shadow: 0 0 30px -5px color-mix(in oklch, var(--brand) 20%, transparent);
+  }
+
+  .gradient-text {
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(to right, var(--brand), #c084fc, #60a5fa);
+    background-size: 200% auto;
+  }
+
+  .gradient-text-animated {
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(to right, var(--brand), #c084fc, #60a5fa);
+    background-size: 200% auto;
+    animation: gradient-x 6s ease infinite;
+  }
+
+  .glow-brand {
+    box-shadow: 0 0 40px -10px var(--brand);
+  }
+
+  .grid-pattern {
+    background-image:
+      linear-gradient(to right, oklch(1 0 0 / 3%) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(1 0 0 / 3%) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .dark .grid-pattern {
+    background-image:
+      linear-gradient(to right, oklch(1 0 0 / 5%) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(1 0 0 / 5%) 1px, transparent 1px);
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--muted);
+    border-radius: 3px;
+  }
 }
