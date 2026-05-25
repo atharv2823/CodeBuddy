@@ -117,7 +117,7 @@ export function TerminalDemo() {
             {/* Terminal output */}
             <div
               ref={containerRef}
-              className="p-5 min-h-[320px] max-h-[400px] overflow-y-auto scrollbar-thin font-mono text-sm leading-7"
+              className="p-5 min-h-80 max-h-100 overflow-y-auto scrollbar-thin font-mono text-sm leading-7"
             >
               {lines.map((line, i) => (
                 <div key={i}>

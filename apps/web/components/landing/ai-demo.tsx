@@ -108,14 +108,14 @@ export function AiDemo() {
             </div>
 
             {/* Messages */}
-            <div ref={containerRef} className="p-5 space-y-4 min-h-[350px] max-h-[400px] overflow-y-auto scrollbar-thin">
+            <div ref={containerRef} className="p-5 space-y-4 min-h-87.5 max-h-100 overflow-y-auto scrollbar-thin">
               {CONVERSATION.slice(0, visibleMessages).map((msg, i) => (
                 <div
                   key={i}
                   className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
                 >
                   {msg.role === "ai" && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand/15 flex items-center justify-center mt-0.5">
+                    <div className="shrink-0 w-7 h-7 rounded-full bg-brand/15 flex items-center justify-center mt-0.5">
                       <Bot className="w-3.5 h-3.5 text-brand" />
                     </div>
                   )}
@@ -134,7 +134,7 @@ export function AiDemo() {
                     )}
                   </div>
                   {msg.role === "user" && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center mt-0.5">
+                    <div className="shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center mt-0.5">
                       <User className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                   )}
@@ -144,12 +144,12 @@ export function AiDemo() {
               {/* Currently typing AI message */}
               {isAiTyping && (
                 <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand/15 flex items-center justify-center mt-0.5">
+                  <div className="shrink-0 w-7 h-7 rounded-full bg-brand/15 flex items-center justify-center mt-0.5">
                     <Bot className="w-3.5 h-3.5 text-brand" />
                   </div>
                   <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-muted/60 text-sm leading-relaxed">
                     {currentAiText}
-                    <span className="inline-block w-[2px] h-4 bg-brand ml-0.5 animate-typing-cursor align-text-bottom" />
+                    <span className="inline-block w-0.5 h-4 bg-brand ml-0.5 animate-typing-cursor align-text-bottom" />
                   </div>
                 </div>
               )}

@@ -35,7 +35,7 @@ export function DashboardSidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-16 border-b border-border/50">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex-shrink-0">
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 shrink-0">
           <Code2 className="w-4 h-4 text-brand" />
         </div>
         {!collapsed && (
@@ -61,7 +61,7 @@ export function DashboardSidebar() {
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
-              <Icon className="w-4.5 h-4.5 flex-shrink-0" />
+              <Icon className="w-4.5 h-4.5 shrink-0" />
               {!collapsed && <span>{item.label}</span>}
             </Link>
           );
@@ -72,7 +72,7 @@ export function DashboardSidebar() {
       <div className="p-3 border-t border-border/50">
         {!collapsed && (
           <div className="flex items-center gap-3 px-2 py-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-xs font-bold text-white shrink-0">
               U
             </div>
             <div className="min-w-0">

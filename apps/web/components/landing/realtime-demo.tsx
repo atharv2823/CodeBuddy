@@ -133,7 +133,7 @@ export function RealtimeDemo() {
             {/* Two-pane editor */}
             <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/5">
               {/* User A pane */}
-              <div className="p-5 min-h-[200px]">
+              <div className="p-5 min-h-50">
                 <div className="flex items-center gap-2 mb-3">
                   <div
                     className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white"
@@ -150,7 +150,7 @@ export function RealtimeDemo() {
                   {lineA}
                   {typingUser === "a" && (
                     <span
-                      className="inline-block w-[2px] h-4 ml-0.5 animate-typing-cursor align-text-bottom"
+                      className="inline-block w-0.5 h-4 ml-0.5 animate-typing-cursor align-text-bottom"
                       style={{ backgroundColor: USER_A.color }}
                     />
                   )}
@@ -158,7 +158,7 @@ export function RealtimeDemo() {
               </div>
 
               {/* User B pane */}
-              <div className="p-5 min-h-[200px]">
+              <div className="p-5 min-h-50">
                 <div className="flex items-center gap-2 mb-3">
                   <div
                     className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white"
@@ -175,7 +175,7 @@ export function RealtimeDemo() {
                   {lineB}
                   {typingUser === "b" && (
                     <span
-                      className="inline-block w-[2px] h-4 ml-0.5 animate-typing-cursor align-text-bottom"
+                      className="inline-block w-0.5 h-4 ml-0.5 animate-typing-cursor align-text-bottom"
                       style={{ backgroundColor: USER_B.color }}
                     />
                   )}

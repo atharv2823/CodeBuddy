@@ -83,7 +83,7 @@ export function FeaturesSection() {
               >
                 {/* Icon */}
                 <div
-                  className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} mb-5 shadow-lg`}
+                  className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-linear-to-br ${feature.gradient} mb-5 shadow-lg`}
                 >
                   <Icon className="w-6 h-6 text-white" />
                 </div>
@@ -98,7 +98,7 @@ export function FeaturesSection() {
 
                 {/* Hover gradient line at bottom */}
                 <div
-                  className={`absolute bottom-0 left-6 right-6 h-[2px] rounded-full bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
+                  className={`absolute bottom-0 left-6 right-6 h-0.5 rounded-full bg-linear-to-r ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
                 />
               </div>
             );

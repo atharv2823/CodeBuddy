@@ -37,7 +37,7 @@ function FloatingCursor({
 
   return (
     <div
-      className="absolute transition-all duration-[2000ms] ease-in-out pointer-events-none z-10"
+      className="absolute transition-all duration-2000 ease-in-out pointer-events-none z-10"
       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
     >
       {/* Cursor SVG */}
@@ -102,7 +102,7 @@ function TypingText({ texts }: { texts: string[] }) {
   return (
     <span className="gradient-text">
       {displayedText}
-      <span className="inline-block w-[3px] h-[1em] bg-brand ml-1 animate-typing-cursor align-text-bottom" />
+      <span className="inline-block w-0.5 h-4 ml-1 animate-typing-cursor align-text-bottom" />
     </span>
   );
 }
@@ -143,7 +143,7 @@ function MockEditor() {
         </div>
 
         {/* Code area */}
-        <div className="relative p-4 font-mono text-xs sm:text-sm leading-6 min-h-[320px]">
+        <div className="relative p-4 font-mono text-xs sm:text-sm leading-6 min-h-80">
           {/* Live cursors */}
           {CURSORS.map((c) => (
             <FloatingCursor
@@ -186,7 +186,7 @@ export function HeroSection() {
       <div className="absolute inset-0 grid-pattern" />
 
       {/* Radial glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-brand/8 rounded-full blur-[120px]" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-150 h-150 bg-brand/8 rounded-full blur-[120px]" />
 
       <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8">
         {/* Badge */}

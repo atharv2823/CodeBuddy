@@ -132,9 +132,9 @@ export function PricingSection() {
                 {plan.features.map((f) => (
                   <li key={f.text} className="flex items-center gap-3 text-sm">
                     {f.included ? (
-                      <Check className="w-4 h-4 text-brand flex-shrink-0" />
+                      <Check className="w-4 h-4 text-brand shrink-0" />
                     ) : (
-                      <X className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+                      <X className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                     )}
                     <span
                       className={
