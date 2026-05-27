@@ -15,6 +15,7 @@ import {
   Lock,
   Sparkles,
 } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
 
 /* ── Animation Variants ── */
 const container = {
@@ -70,6 +71,23 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
+  const handleGoogleLogin = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Google login error:", err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -111,6 +129,8 @@ export default function LoginPage() {
           variant="outline"
           className="h-11 gap-2 text-sm font-medium hover:border-brand/30 hover:bg-brand/5 transition-all duration-300"
           id="login-google"
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
         >
           <GoogleIcon className="w-4 h-4" />
           Google

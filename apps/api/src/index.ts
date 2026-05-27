@@ -1,8 +1,16 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import cors from "cors";
+import { prisma } from "./utils/prisma";
 
 const app = express();
+
+app.use(cors());
+app.use(express.json());
 
 const server = http.createServer(app);
 
@@ -14,7 +22,8 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
 
-    console.log("User Connected");
+    // console.log("User Connec
+    //     ted");
 
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
@@ -24,6 +33,24 @@ io.on("connection", (socket) => {
         socket.to(data.roomId).emit("receive-code", data.code);
     });
 
+});
+
+app.post("/api/users", async (req, res) => {
+    const { email, username } = req.body;
+    if (!email || !username) {
+        return res.status(400).json({ error: "Missing email or username" });
+    }
+    try {
+        const user = await prisma.user.upsert({
+            where: { email },
+            update: { username },
+            create: { email, username },
+        });
+        return res.json(user);
+    } catch (error: any) {
+        console.error("Error saving user to MongoDB:", error);
+        return res.status(500).json({ error: error.message });
+    }
 });
 
 server.listen(5000, () => {
