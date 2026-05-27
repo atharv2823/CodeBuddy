@@ -18,6 +18,7 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
 
 /* ── Animation Variants ── */
 const container = {
@@ -176,6 +177,23 @@ export default function SignupPage() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  const handleGoogleSignup = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Google signup error:", err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -217,6 +235,8 @@ export default function SignupPage() {
           variant="outline"
           className="h-11 gap-2 text-sm font-medium hover:border-brand/30 hover:bg-brand/5 transition-all duration-300"
           id="signup-google"
+          onClick={handleGoogleSignup}
+          disabled={isLoading}
         >
           <GoogleIcon className="w-4 h-4" />
           Google
