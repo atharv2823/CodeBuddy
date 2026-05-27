@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { Loader2, Sparkles, User, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@workspace/ui/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ export default function AuthCallbackPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [role, setRole] = useState("Developer");
   const [isSaving, setIsSaving] = useState(false);
   const [showLoadingState, setShowLoadingState] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -106,7 +108,7 @@ export default function AuthCallbackPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, username: username.trim() }),
+        body: JSON.stringify({ email, username: username.trim(), role }),
       });
 
       if (!saveRes.ok) throw new Error("Failed to save profile details");
@@ -188,6 +190,38 @@ export default function AuthCallbackPage() {
                   className="h-11 pl-10 transition-all duration-300 focus-visible:ring-brand/30 focus-visible:border-brand/50 bg-background/50"
                   required
                 />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-left text-foreground/80">
+                Choose your Role
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole("Developer")}
+                  className={cn(
+                    "h-11 px-4 rounded-lg border text-sm font-medium transition-all duration-300",
+                    role === "Developer"
+                      ? "border-brand bg-brand/10 text-brand shadow-lg shadow-brand/10 cursor-default"
+                      : "border-border/60 bg-background/50 text-muted-foreground hover:border-brand/20 hover:text-foreground cursor-pointer"
+                  )}
+                >
+                  Developer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("Interviewer")}
+                  className={cn(
+                    "h-11 px-4 rounded-lg border text-sm font-medium transition-all duration-300",
+                    role === "Interviewer"
+                      ? "border-brand bg-brand/10 text-brand shadow-lg shadow-brand/10 cursor-default"
+                      : "border-border/60 bg-background/50 text-muted-foreground hover:border-brand/20 hover:text-foreground cursor-pointer"
+                  )}
+                >
+                  Interviewer
+                </button>
               </div>
             </div>
 

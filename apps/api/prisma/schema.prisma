@@ -16,6 +16,7 @@ model User {
   id        String   @id @default(uuid()) @map("_id")
   username  String
   email     String   @unique
+  role      String   @default("Developer")
 
   rooms RoomMember[]
 }
@@ -23,6 +24,7 @@ model User {
 model Room {
   id        String   @id @default(uuid()) @map("_id")
   name      String
+  isClosed  Boolean  @default(false)
 
   members RoomMember[]
 }

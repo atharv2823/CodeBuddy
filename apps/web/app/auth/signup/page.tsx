@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
+import { cn } from "@workspace/ui/lib/utils";
 import {
   ArrowRight,
   Eye,
@@ -179,6 +180,7 @@ export default function SignupPage() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState("");
+  const [role, setRole] = useState("Developer");
 
   const handleGoogleSignup = useCallback(async () => {
     try {
@@ -225,6 +227,7 @@ export default function SignupPage() {
           body: JSON.stringify({
             email,
             username: name.replace(/\s+/g, "").toLowerCase(),
+            role,
           }),
         });
 
@@ -372,6 +375,39 @@ export default function SignupPage() {
                 transition={{ duration: 0.2 }}
               />
             )}
+          </div>
+        </motion.div>
+
+        {/* Workspace Role Choice */}
+        <motion.div variants={item} className="space-y-1.5">
+          <label className="block text-sm font-medium mb-1.5">
+            Workspace Role
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setRole("Developer")}
+              className={cn(
+                "h-11 px-4 rounded-lg border text-sm font-medium transition-all duration-300",
+                role === "Developer"
+                  ? "border-brand bg-brand/10 text-brand shadow-lg shadow-brand/10 cursor-default"
+                  : "border-border/60 bg-background/50 text-muted-foreground hover:border-brand/20 hover:text-foreground cursor-pointer"
+              )}
+            >
+              Developer
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("Interviewer")}
+              className={cn(
+                "h-11 px-4 rounded-lg border text-sm font-medium transition-all duration-300",
+                role === "Interviewer"
+                  ? "border-brand bg-brand/10 text-brand shadow-lg shadow-brand/10 cursor-default"
+                  : "border-border/60 bg-background/50 text-muted-foreground hover:border-brand/20 hover:text-foreground cursor-pointer"
+              )}
+            >
+              Interviewer
+            </button>
           </div>
         </motion.div>
 
