@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -169,6 +170,7 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function SignupPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -176,6 +178,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [error, setError] = useState("");
 
   const handleGoogleSignup = useCallback(async () => {
     try {
@@ -198,11 +201,46 @@ export default function SignupPage() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       setIsLoading(true);
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setIsLoading(false);
+      setError("");
+      
+      try {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+            },
+          },
+        });
+
+        if (signUpError) throw signUpError;
+        if (!data?.user) throw new Error("Signup failed. Please try again.");
+
+        const saveRes = await fetch("http://localhost:5000/api/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            username: name.replace(/\s+/g, "").toLowerCase(),
+          }),
+        });
+
+        if (!saveRes.ok) {
+          throw new Error("Saved in Supabase, but failed to sync user details to MongoDB.");
+        }
+
+        router.push("/dashboard");
+      } catch (err: any) {
+        console.error("Signup error:", err);
+        setError(err.message || "An error occurred during signup.");
+      } finally {
+        setIsLoading(false);
+      }
     },
-    []
+    [email, password, name, router]
   );
 
   return (
@@ -441,6 +479,16 @@ export default function SignupPage() {
             </Link>
           </label>
         </motion.div>
+        
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-xs font-medium text-red-500 text-left bg-red-500/10 p-2.5 rounded-lg border border-red-500/15"
+          >
+            {error}
+          </motion.div>
+        )}
 
         {/* Submit Button */}
         <motion.div variants={item} className="pt-2">

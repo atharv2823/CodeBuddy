@@ -35,6 +35,22 @@ io.on("connection", (socket) => {
 
 });
 
+app.get("/api/users/check", async (req, res) => {
+    const { email } = req.query;
+    if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Missing email query parameter" });
+    }
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+        });
+        return res.json({ exists: !!user, user });
+    } catch (error: any) {
+        console.error("Error checking user in MongoDB:", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 app.post("/api/users", async (req, res) => {
     const { email, username } = req.body;
     if (!email || !username) {
