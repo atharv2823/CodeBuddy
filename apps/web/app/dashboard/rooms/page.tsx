@@ -35,7 +35,7 @@ export default function RoomsPage() {
   const fetchUserRooms = async (userId: string) => {
     try {
       setIsLoadingRooms(true);
-      const res = await fetch(`http://localhost:5000/api/rooms?userId=${encodeURIComponent(userId)}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms?userId=${encodeURIComponent(userId)}`);
       if (res.ok) {
         const data = await res.json();
         setRooms(data);
@@ -50,7 +50,7 @@ export default function RoomsPage() {
   const fetchAllRooms = async () => {
     try {
       setIsLoadingRooms(true);
-      const res = await fetch("http://localhost:5000/api/rooms");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms`);
       if (res.ok) {
         const data = await res.json();
         setRooms(data);
@@ -72,7 +72,7 @@ export default function RoomsPage() {
           const email = session.user.email || "";
 
           // Fetch MongoDB user ID by email
-          const res = await fetch(`http://localhost:5000/api/users/check?email=${encodeURIComponent(email)}`);
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/check?email=${encodeURIComponent(email)}`);
           if (res.ok) {
             const data = await res.json();
             if (data.exists && data.user) {
@@ -104,7 +104,7 @@ export default function RoomsPage() {
       setIsCreating(true);
       setErrorMsg("");
 
-      const res = await fetch("http://localhost:5000/api/rooms", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +136,7 @@ export default function RoomsPage() {
       setIsJoining(true);
       setErrorMsg("");
 
-      const res = await fetch(`http://localhost:5000/api/rooms/${joinRoomId.trim()}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms/${joinRoomId.trim()}`);
       if (!res.ok) {
         if (res.status === 403) {
           throw new Error("This room has been closed and cannot be entered.");

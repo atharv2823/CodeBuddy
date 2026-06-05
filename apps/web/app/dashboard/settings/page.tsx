@@ -41,7 +41,7 @@ export default function SettingsPage() {
         setEmail(userEmail);
 
         // 2. Fetch extended details (username, role) from MongoDB database
-        const res = await fetch(`http://localhost:5000/api/users/check?email=${encodeURIComponent(userEmail)}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/check?email=${encodeURIComponent(userEmail)}`);
         if (res.ok) {
           const data = await res.json();
           if (data.exists && data.user) {
@@ -75,7 +75,7 @@ export default function SettingsPage() {
       setMessage(null);
 
       // 3. Save modifications directly to MongoDB
-      const res = await fetch("http://localhost:5000/api/users/update", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

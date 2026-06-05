@@ -36,7 +36,7 @@ export default function AuthCallbackPage() {
       try {
         // 1. Check if the user profile exists in MongoDB
         const checkRes = await fetch(
-          `http://localhost:5000/api/users/check?email=${encodeURIComponent(emailStr)}`
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/users/check?email=${encodeURIComponent(emailStr)}`
         );
         if (!checkRes.ok) throw new Error("Failed to check user presence");
         const checkData = await checkRes.json();
@@ -103,7 +103,7 @@ export default function AuthCallbackPage() {
       setErrorMsg("");
 
       // 4. Save details directly to MongoDB
-      const saveRes = await fetch("http://localhost:5000/api/users", {
+      const saveRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
