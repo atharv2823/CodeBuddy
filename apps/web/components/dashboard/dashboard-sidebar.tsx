@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { Button } from "@workspace/ui/components/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -24,7 +25,61 @@ const navItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const fetchUserSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser({
+          email: session.user.email || "",
+          name:
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            session.user.email?.split("@")[0] ||
+            "User",
+        });
+      }
+    };
+
+    fetchUserSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          email: session.user.email || "",
+          name:
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            session.user.email?.split("@")[0] ||
+            "User",
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push("/auth/login");
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
+
+  const initialLetter = user?.name ? user.name.charAt(0).toUpperCase() : "U";
 
   return (
     <aside
@@ -70,15 +125,15 @@ export function DashboardSidebar() {
 
       {/* User section */}
       <div className="p-3 border-t border-border/50">
-        {!collapsed && (
+        {!collapsed && user && (
           <div className="flex items-center gap-3 px-2 py-2 mb-2">
             <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-xs font-bold text-white shrink-0">
-              U
+              {initialLetter}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">User</p>
+              <p className="text-sm font-medium truncate">{user.name}</p>
               <p className="text-xs text-muted-foreground truncate">
-                user@codebuddy.dev
+                {user.email}
               </p>
             </div>
           </div>
@@ -86,6 +141,7 @@ export function DashboardSidebar() {
         <Button
           variant="ghost"
           size="sm"
+          onClick={handleSignOut}
           className={cn("text-muted-foreground", collapsed ? "w-full justify-center" : "w-full justify-start")}
         >
           <LogOut className="w-4 h-4" />
