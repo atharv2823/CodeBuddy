@@ -102,7 +102,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     // 1. Fetch Room Name from backend
     const fetchRoomDetails = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/rooms/${roomId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms/${roomId}`);
         if (res.ok) {
           const data = await res.json();
           setRoomName(data.name);
@@ -114,7 +114,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     fetchRoomDetails();
 
     // 2. Setup Socket.io Connection
-    const socket = io("http://localhost:5000");
+    const socket = io(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000");
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -162,7 +162,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   const handleCloseRoom = async () => {
     if (!confirm("Are you sure you want to CLOSE this room? This blocks all new entries permanently.")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/rooms/${roomId}/close`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms/${roomId}/close`, {
         method: "PUT",
       });
       if (res.ok) {
@@ -176,7 +176,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   const handleDeleteRoom = async () => {
     if (!confirm("Are you sure you want to DELETE this room? This will delete it completely for all members.")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/rooms/${roomId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms/${roomId}`, {
         method: "DELETE",
       });
       if (res.ok) {

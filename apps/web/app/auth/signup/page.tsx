@@ -219,7 +219,7 @@ export default function SignupPage() {
         if (signUpError) throw signUpError;
         if (!data?.user) throw new Error("Signup failed. Please try again.");
 
-        const saveRes = await fetch("http://localhost:5000/api/users", {
+        const saveRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -38,4 +38,4 @@ app.use("/api/rooms", roomRoutes);
 
 server.listen(5000, () => {
     console.log("Server running");
-});
+}); 

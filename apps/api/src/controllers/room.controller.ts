@@ -8,9 +8,16 @@ export const createRoom = async (req: Request, res: Response) => {
     }
     try {
         const room = await prisma.room.create({
-            data: { name, userId },
+            data: {
+                name,
+                creator: {
+                    connect: {
+                        id: userId,
+                    },
+                },
+            },
         });
-        return res.json(room);
+        return res.json(room); 
     } catch (error: any) {
         console.error("Error creating room:", error);
         return res.status(500).json({ error: error.message });
