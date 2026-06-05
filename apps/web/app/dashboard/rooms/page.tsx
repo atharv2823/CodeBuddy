@@ -17,6 +17,7 @@ import {
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
+import { supabase } from "../../../lib/supabase";
 
 export default function RoomsPage() {
   const router = useRouter();
@@ -28,9 +29,25 @@ export default function RoomsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
+  const [mongoUserId, setMongoUserId] = useState<string | null>(null);
 
-  // Load existing rooms from MongoDB database
-  const fetchRooms = async () => {
+  // Load existing rooms filtered user-wise
+  const fetchUserRooms = async (userId: string) => {
+    try {
+      setIsLoadingRooms(true);
+      const res = await fetch(`http://localhost:5000/api/rooms?userId=${encodeURIComponent(userId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRooms(data);
+      }
+    } catch (err) {
+      console.error("Failed to load user rooms:", err);
+    } finally {
+      setIsLoadingRooms(false);
+    }
+  };
+
+  const fetchAllRooms = async () => {
     try {
       setIsLoadingRooms(true);
       const res = await fetch("http://localhost:5000/api/rooms");
@@ -39,19 +56,49 @@ export default function RoomsPage() {
         setRooms(data);
       }
     } catch (err) {
-      console.error("Failed to load rooms:", err);
+      console.error("Failed to load all rooms:", err);
     } finally {
       setIsLoadingRooms(false);
     }
   };
 
   useEffect(() => {
-    fetchRooms();
+    const initializeUserAndRooms = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user) {
+          const email = session.user.email || "";
+
+          // Fetch MongoDB user ID by email
+          const res = await fetch(`http://localhost:5000/api/users/check?email=${encodeURIComponent(email)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.exists && data.user) {
+              setMongoUserId(data.user.id);
+              await fetchUserRooms(data.user.id);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to initialize user session:", err);
+      }
+      // Fallback: load all rooms if auth is unavailable or not synced yet
+      await fetchAllRooms();
+    };
+
+    initializeUserAndRooms();
   }, []);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim()) return;
+    if (!mongoUserId) {
+      setErrorMsg("User session is not initialized. Please try again.");
+      return;
+    }
 
     try {
       setIsCreating(true);
@@ -62,14 +109,13 @@ export default function RoomsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: roomName.trim() }),
+        body: JSON.stringify({ name: roomName.trim(), userId: mongoUserId }),
       });
 
       if (!res.ok) throw new Error("Failed to create room");
 
       const newRoom = await res.json();
       setRoomName("");
-      // Add new room to state and refresh list
       setRooms((prev) => [newRoom, ...prev]);
       
       // Instantly direct user into their brand new collaboration room!
@@ -92,6 +138,9 @@ export default function RoomsPage() {
 
       const res = await fetch(`http://localhost:5000/api/rooms/${joinRoomId.trim()}`);
       if (!res.ok) {
+        if (res.status === 403) {
+          throw new Error("This room has been closed and cannot be entered.");
+        }
         throw new Error("Room not found. Please verify the Room ID.");
       }
 
@@ -226,7 +275,7 @@ export default function RoomsPage() {
       <div className="space-y-4">
         <div className="flex items-center gap-2 border-b border-border/50 pb-2">
           <Users className="w-5 h-5 text-brand" />
-          <h2 className="text-xl font-bold">Active Collaboration Rooms</h2>
+          <h2 className="text-xl font-bold font-heading">Your Active Rooms</h2>
         </div>
 
         {isLoadingRooms ? (
@@ -269,12 +318,12 @@ export default function RoomsPage() {
                     >
                       {copiedId === room.id ? (
                         <>
-                          <Check className="w-3 h-3 text-green-500 mr-1.5" />
+                          <Check className="w-3.5 h-3.5 text-green-500 mr-1.5" />
                           Copied
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3 h-3 mr-1.5" />
+                          <Copy className="w-3.5 h-3.5 mr-1.5" />
                           Copy ID
                         </>
                       )}

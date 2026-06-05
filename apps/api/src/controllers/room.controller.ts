@@ -2,13 +2,13 @@ import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
 
 export const createRoom = async (req: Request, res: Response) => {
-    const { name } = req.body;
-    if (!name) {
-        return res.status(400).json({ error: "Room name is required" });
+    const { name, userId } = req.body;
+    if (!name || !userId) {
+        return res.status(400).json({ error: "Room name and userId are required" });
     }
     try {
         const room = await prisma.room.create({
-            data: { name },
+            data: { name, userId },
         });
         return res.json(room);
     } catch (error: any) {
@@ -17,11 +17,16 @@ export const createRoom = async (req: Request, res: Response) => {
     }
 };
 
+
 export const listRooms = async (req: Request, res: Response) => {
+    const { userId } = req.query;
     try {
-        // Only return rooms that are not closed
+        // Only return rooms that are not closed, and filter user-wise if userId is provided
         const rooms = await prisma.room.findMany({
-            where: { isClosed: false },
+            where: {
+                isClosed: false,
+                ...(userId && typeof userId === "string" && { userId }),
+            },
         });
         return res.json(rooms);
     } catch (error: any) {
