@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createRoom, listRooms, getRoom, closeRoom, deleteRoom } from "../controllers/room.controller";
 
-const router = Router();
+const router: Router = Router();
 
 router.post("/", createRoom);
 router.get("/", listRooms);
