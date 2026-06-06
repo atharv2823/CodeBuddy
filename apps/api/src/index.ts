@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import express from "express";
+import express, { Express } from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
@@ -9,7 +9,7 @@ import cors from "cors";
 import userRoutes from "./routes/user.routes";
 import roomRoutes from "./routes/room.routes";
 
-const app = express();
+const app: Express = express();
 
 app.use(cors());
 app.use(express.json());
@@ -32,10 +32,19 @@ io.on("connection", (socket) => {
     });
 });
 
+// Root route to verify server is running
+app.get("/", (req, res) => {
+    res.json({ status: "success", message: "CodeBuddy API is running" });
+});
+
 // Register Modular API Routers
 app.use("/api/users", userRoutes);
 app.use("/api/rooms", roomRoutes);
 
-server.listen(5000, () => {
-    console.log("Server running");
-}); 
+if (!process.env.VERCEL) {
+    server.listen(5000, () => {
+        console.log("Server running on port 5000");
+    });
+}
+
+export default app; 
