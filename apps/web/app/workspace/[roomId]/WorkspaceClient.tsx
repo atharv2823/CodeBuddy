@@ -16,12 +16,28 @@ import {
   Loader2,
   Lock,
   Trash2,
+  MessageSquare,
+  Bot,
+  Send,
 } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface WorkspaceClientProps {
   roomId: string;
+}
+
+interface ChatMessage {
+  roomId: string;
+  sender: string;
+  text: string;
+  time: string;
+}
+
+interface AiMessage {
+  role: "user" | "assistant";
+  text: string;
 }
 
 export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
@@ -34,6 +50,31 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
 
   const socketRef = useRef<Socket | null>(null);
   const isIncomingChangeRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const aiMessagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Tabs state: console, chat, ai
+  const [activeTab, setActiveTab] = useState<"console" | "chat" | "ai">("ai");
+
+  // User details
+  const [userProfile, setUserProfile] = useState<{ username: string; email: string }>({
+    username: "Developer",
+    email: "",
+  });
+
+  // Live Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+
+  // AI Assistant state
+  const [aiMessages, setAiMessages] = useState<AiMessage[]>([
+    {
+      role: "assistant",
+      text: "Hello! I am your CodeBuddy AI Assistant. Ask me anything about the code or logical flow. You can also ask me to generate snippets and apply them directly to your workspace.",
+    },
+  ]);
+  const [aiInput, setAiInput] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const [consoleOutputs, setConsoleOutputs] = useState<string[]>([
     "// Output panel initializes here...",
@@ -99,7 +140,35 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   };
 
   useEffect(() => {
-    // 1. Fetch Room Name from backend
+    // 1. Fetch User Profile
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const userEmail = session.user.email || "";
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/check?email=${encodeURIComponent(userEmail)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.exists && data.user) {
+              setUserProfile({
+                username: data.user.username,
+                email: userEmail,
+              });
+            } else {
+              setUserProfile({
+                username: session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split("@")[0],
+                email: userEmail,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load user profile in workspace:", err);
+      }
+    };
+    fetchUserProfile();
+
+    // 2. Fetch Room Name from backend
     const fetchRoomDetails = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms/${roomId}`);
@@ -113,7 +182,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     };
     fetchRoomDetails();
 
-    // 2. Setup Socket.io Connection
+    // 3. Setup Socket.io Connection
     const socket = io(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000");
     socketRef.current = socket;
 
@@ -126,10 +195,20 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
       setConnected(false);
     });
 
-    // 3. Listen to code changes from other developers
+    // Listen to code changes from other developers
     socket.on("receive-code", (receivedCode: string) => {
       isIncomingChangeRef.current = true;
       setCode(receivedCode);
+    });
+
+    // Listen to room chat history
+    socket.on("chat-history", (history: ChatMessage[]) => {
+      setChatMessages(history);
+    });
+
+    // Listen to incoming live chat messages
+    socket.on("receive-chat-message", (message: ChatMessage) => {
+      setChatMessages((prev) => [...prev, message]);
     });
 
     return () => {
@@ -137,7 +216,16 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     };
   }, [roomId]);
 
-  // 4. Handle local code changes
+  // Scroll to bottom of chat when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, activeTab]);
+
+  useEffect(() => {
+    aiMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [aiMessages, activeTab]);
+
+  // Handle local code changes
   const handleEditorChange = (value: string | undefined) => {
     const updatedCode = value || "";
     
@@ -185,6 +273,170 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     } catch (err) {
       console.error("Failed to delete room:", err);
     }
+  };
+
+  // Send live chat message to socket room
+  const sendChatMessage = () => {
+    if (!chatInput.trim()) return;
+    if (socketRef.current) {
+      const msgData: ChatMessage = {
+        roomId,
+        sender: userProfile.username,
+        text: chatInput.trim(),
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      socketRef.current.emit("send-chat-message", msgData);
+      setChatInput("");
+    }
+  };
+
+  // Send question to AI Assistant
+  const sendAiMessage = async () => {
+    if (!aiInput.trim() || isAiLoading) return;
+    const userMessage = aiInput.trim();
+    setAiInput("");
+    setIsAiLoading(true);
+
+    setAiMessages((prev) => [...prev, { role: "user", text: userMessage }]);
+
+    try {
+      const history = aiMessages.map((msg) => ({
+        role: msg.role === "user" ? "user" : "model",
+        text: msg.text,
+      }));
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/ai/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          code: code,
+          language: language,
+          history: history,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAiMessages((prev) => [...prev, { role: "assistant", text: data.response }]);
+      } else {
+        const errData = await response.json();
+        setAiMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: `❌ Error: ${errData.error || "Failed to generate AI response."}` },
+        ]);
+      }
+    } catch (err) {
+      console.error(err);
+      setAiMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: "❌ Error: Could not connect to CodeBuddy AI Services." },
+      ]);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  // Simple Markdown parsing for chatbot replies
+  const parseMarkdown = (text: string) => {
+    const parts = text.split(/(```[\s\S]*?```)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith("```") && part.endsWith("```")) {
+        const lines = part.split("\n");
+        const firstLine = (lines[0] || "").slice(3).trim(); // Extract programming language
+        const codeLines = lines.slice(1, lines.length - 1);
+        const codeText = codeLines.join("\n");
+        return {
+          type: "code" as const,
+          lang: firstLine || "javascript",
+          content: codeText,
+          key: index,
+        };
+      } else {
+        return {
+          type: "text" as const,
+          content: part,
+          key: index,
+        };
+      }
+    });
+  };
+
+  const renderInlineFormatting = (line: string) => {
+    const parts = line.split(/(\*\*.*?\*\*|`.*?`)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return <code key={index} className="bg-muted/40 px-1 py-0.5 rounded font-mono text-[11px] text-brand">{part.slice(1, -1)}</code>;
+      }
+      return part;
+    });
+  };
+
+  const renderFormattedText = (text: string) => {
+    const parsed = parseMarkdown(text);
+    return parsed.map((part) => {
+      if (part.type === "code") {
+        return (
+          <div key={part.key} className="my-3 rounded-lg border border-border/40 overflow-hidden bg-[#0d0e12]">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-[#181922] border-b border-border/40 shrink-0">
+              <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                {part.lang}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  className="h-6 px-2 text-[10px] text-brand hover:bg-brand/10 hover:text-brand"
+                  onClick={() => {
+                    handleEditorChange(part.content);
+                    if (socketRef.current) {
+                      socketRef.current.emit("code-change", { roomId, code: part.content });
+                    }
+                  }}
+                >
+                  Replace All
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="h-6 px-2 text-[10px] text-brand hover:bg-brand/10 hover:text-brand"
+                  onClick={() => {
+                    const newCode = code.trim() + "\n\n" + part.content;
+                    handleEditorChange(newCode);
+                    if (socketRef.current) {
+                      socketRef.current.emit("code-change", { roomId, code: newCode });
+                    }
+                  }}
+                >
+                  Append
+                </Button>
+              </div>
+            </div>
+            <pre className="p-3 font-mono text-[11px] text-zinc-300 overflow-x-auto whitespace-pre">
+              <code>{part.content}</code>
+            </pre>
+          </div>
+        );
+      } else {
+        return (
+          <div key={part.key} className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/90 space-y-1">
+            {part.content.split("\n").map((line, lIdx) => {
+              if (line.trim().startsWith("- ")) {
+                return (
+                  <li key={lIdx} className="ml-4 list-disc text-zinc-300">
+                    {renderInlineFormatting(line.trim().slice(2))}
+                  </li>
+                );
+              }
+              return <p key={lIdx}>{renderInlineFormatting(line)}</p>;
+            })}
+          </div>
+        );
+      }
+    });
   };
 
   return (
@@ -318,41 +570,211 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
               tabSize: 2,
               cursorBlinking: "smooth",
               padding: { top: 16 },
-              // background: "#16171e",
             }}
           />
         </div>
 
-        {/* Dynamic mini-console pane on right */}
-        <div className="w-80 border-l border-border/40 bg-[#12131a] flex flex-col shrink-0">
-          <div className="p-4 border-b border-border/40 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-brand" />
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Console Output
-              </span>
+        {/* Tabbed Interactive Sidebar panel on right */}
+        <div className="w-[400px] border-l border-border/40 bg-[#12131a] flex flex-col shrink-0">
+          {/* Tabs Navigation Header */}
+          <div className="flex items-center justify-between border-b border-border/40 shrink-0 bg-[#151620]">
+            <div className="flex flex-1">
+              <button
+                onClick={() => setActiveTab("ai")}
+                className={cn(
+                  "flex-1 py-3 px-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 border-b-2",
+                  activeTab === "ai"
+                    ? "text-brand border-brand bg-[#1b1c28]"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-[#181922]/55"
+                )}
+              >
+                <Bot className="w-4 h-4" />
+                AI Assistant
+              </button>
+              <button
+                onClick={() => setActiveTab("chat")}
+                className={cn(
+                  "flex-1 py-3 px-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 border-b-2",
+                  activeTab === "chat"
+                    ? "text-brand border-brand bg-[#1b1c28]"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-[#181922]/55"
+                )}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Room Chat
+              </button>
+              <button
+                onClick={() => setActiveTab("console")}
+                className={cn(
+                  "flex-1 py-3 px-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 border-b-2",
+                  activeTab === "console"
+                    ? "text-brand border-brand bg-[#1b1c28]"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-[#181922]/55"
+                )}
+              >
+                <Terminal className="w-4 h-4" />
+                Console
+              </button>
             </div>
-            <Sparkles className="w-4 h-4 text-brand animate-pulse" />
           </div>
-          <div className="flex-1 p-4 font-mono text-xs bg-[#0a0a0f] overflow-y-auto space-y-2 select-text">
-            {consoleOutputs.map((output, idx) => {
-              const isError = output.startsWith("❌") || output.startsWith("[ERROR]");
-              const isSuccess = output.startsWith("✔");
-              return (
-                <p 
-                  key={idx} 
-                  className={
-                    isError 
-                      ? "text-red-400 font-bold" 
-                      : isSuccess 
-                        ? "text-brand/80" 
-                        : "text-muted-foreground/90"
-                  }
-                >
-                  {output}
-                </p>
-              );
-            })}
+
+          {/* Active Tab View */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#0d0e12]">
+            {/* 1. AI Assistant Tab */}
+            {activeTab === "ai" && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Messages Box */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                  {aiMessages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "flex flex-col max-w-[85%] rounded-2xl p-3 text-xs leading-normal",
+                        msg.role === "user"
+                          ? "bg-brand/10 border border-brand/20 text-foreground self-end ml-auto rounded-tr-none"
+                          : "bg-muted/30 border border-border/20 text-zinc-100 self-start mr-auto rounded-tl-none"
+                      )}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1.5 opacity-60">
+                        {msg.role === "user" ? (
+                          <span className="font-bold text-brand uppercase text-[9px]">You</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <Bot className="w-3.5 h-3.5 text-brand" />
+                            <span className="font-bold text-brand uppercase text-[9px]">CodeBuddy AI</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1 break-words">
+                        {renderFormattedText(msg.text)}
+                      </div>
+                    </div>
+                  ))}
+                  {isAiLoading && (
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs p-2 self-start bg-muted/20 border border-border/10 rounded-2xl rounded-tl-none animate-pulse max-w-[85%]">
+                      <Loader2 className="w-4 h-4 animate-spin text-brand" />
+                      <span>Thinking...</span>
+                    </div>
+                  )}
+                  <div ref={aiMessagesEndRef} />
+                </div>
+
+                {/* Input Box */}
+                <div className="p-3 border-t border-border/40 bg-[#12131a] flex gap-2 shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Ask for code logic, optimization..."
+                    value={aiInput}
+                    onChange={(e) => setAiInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendAiMessage()}
+                    disabled={isAiLoading}
+                    className="flex-1 bg-[#181922] border border-border/40 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand/60 text-foreground placeholder:text-muted-foreground disabled:opacity-55"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={sendAiMessage}
+                    disabled={isAiLoading || !aiInput.trim()}
+                    className="h-8 w-8 p-0 bg-brand hover:bg-brand/90 text-brand-foreground rounded-lg glow-brand"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* 2. Room Chat Tab */}
+            {activeTab === "chat" && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Messages Box */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                  {chatMessages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                      <MessageSquare className="w-8 h-8 text-muted-foreground/35 mb-2 animate-bounce" />
+                      <p className="text-xs text-muted-foreground">No messages yet in this room.</p>
+                      <p className="text-[10px] text-muted-foreground/60">Start the conversation below!</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, idx) => {
+                      const isMe = msg.sender === userProfile.username;
+                      return (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "flex flex-col max-w-[80%] rounded-2xl px-3 py-2 text-xs",
+                            isMe
+                              ? "bg-brand text-brand-foreground self-end ml-auto rounded-tr-none"
+                              : "bg-[#181922] border border-border/40 text-foreground self-start mr-auto rounded-tl-none"
+                          )}
+                        >
+                          <div className="flex items-baseline justify-between gap-4 mb-1">
+                            <span className="font-bold text-[10px] opacity-90 truncate">
+                              {msg.sender}
+                            </span>
+                            <span className="text-[8px] opacity-65 font-mono">
+                              {msg.time}
+                            </span>
+                          </div>
+                          <p className="break-words leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input Box */}
+                <div className="p-3 border-t border-border/40 bg-[#12131a] flex gap-2 shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Type message to room..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendChatMessage()}
+                    className="flex-1 bg-[#181922] border border-border/40 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand/60 text-foreground placeholder:text-muted-foreground"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={sendChatMessage}
+                    disabled={!chatInput.trim()}
+                    className="h-8 w-8 p-0 bg-brand hover:bg-brand/90 text-brand-foreground rounded-lg glow-brand"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Console Output Tab */}
+            {activeTab === "console" && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-border/20 flex items-center justify-between shrink-0 bg-[#151620]">
+                  <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                    Runtime Logs
+                  </span>
+                  <Sparkles className="w-4 h-4 text-brand animate-pulse" />
+                </div>
+                <div className="flex-1 p-4 font-mono text-[11px] bg-[#0a0a0f] overflow-y-auto space-y-2 select-text">
+                  {consoleOutputs.map((output, idx) => {
+                    const isError = output.startsWith("❌") || output.startsWith("[ERROR]");
+                    const isSuccess = output.startsWith("✔");
+                    return (
+                      <p 
+                        key={idx} 
+                        className={
+                          isError 
+                            ? "text-red-400 font-semibold" 
+                            : isSuccess 
+                              ? "text-brand" 
+                              : "text-zinc-300"
+                        }
+                      >
+                        {output}
+                      </p>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
