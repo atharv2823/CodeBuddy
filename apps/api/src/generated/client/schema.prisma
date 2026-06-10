@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../src/generated/client"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String @id @default(uuid()) @map("_id")
+  username String
+  email    String @unique
+  role     String @default("Developer")
+
+  rooms        RoomMember[]
+  createdRooms Room[]
+}
+
+model Room {
+  id       String  @id @default(uuid()) @map("_id")
+  name     String
+  isClosed Boolean @default(false)
+  userId   String
+  creator  User    @relation(fields: [userId], references: [id])
+
+  members RoomMember[]
+}
+
+model RoomMember {
+  id String @id @default(uuid()) @map("_id")
+
+  roomId String
+  userId String
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
