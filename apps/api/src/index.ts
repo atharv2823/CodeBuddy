@@ -18,7 +18,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: "*", 
+        origin: "*",
     },
 });
 
@@ -34,7 +34,7 @@ const roomChats: Record<string, ChatMessage[]> = {};
 io.on("connection", (socket) => {
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
-        
+
         // Emit chat history to user on join
         if (roomChats[roomId]) {
             socket.emit("chat-history", roomChats[roomId]);
@@ -47,11 +47,11 @@ io.on("connection", (socket) => {
 
     socket.on("send-chat-message", (data: ChatMessage) => {
         if (!data.roomId) return;
-        
+
         if (!roomChats[data.roomId]) {
             roomChats[data.roomId] = [];
         }
-        
+
         const chats = roomChats[data.roomId];
         if (chats) {
             chats.push(data);
@@ -60,7 +60,7 @@ io.on("connection", (socket) => {
                 chats.shift();
             }
         }
-        
+
         // Broadcast message to everyone in the room (including sender)
         io.to(data.roomId).emit("receive-chat-message", data);
     });
