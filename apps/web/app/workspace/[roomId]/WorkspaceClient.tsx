@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Bot,
   Send,
+  Eye,
 } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
@@ -53,8 +54,9 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiMessagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Tabs state: console, chat, ai
-  const [activeTab, setActiveTab] = useState<"console" | "chat" | "ai">("ai");
+  // Tabs state: console, chat, ai, preview
+  const [activeTab, setActiveTab] = useState<"console" | "chat" | "ai" | "preview">("ai");
+  const [previewKey, setPreviewKey] = useState(0);
 
   // User details
   const [userProfile, setUserProfile] = useState<{ username: string; email: string }>({
@@ -85,6 +87,8 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   const runCode = () => {
     setIsRunning(true);
     setConsoleOutputs(["Running code..."]);
+    setActiveTab("preview");
+    setPreviewKey(prev => prev + 1);
 
     setTimeout(() => {
       if (language === "javascript" || language === "typescript") {
@@ -439,6 +443,255 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     });
   };
 
+  const getPreviewContent = () => {
+    if (language === "html") {
+      return code;
+    }
+    if (language === "css") {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            ${code}
+          </style>
+          <style>
+            body {
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background-color: #0f172a;
+              color: #f8fafc;
+              padding: 24px;
+              margin: 0;
+            }
+            .preview-container {
+              max-width: 600px;
+              margin: 0 auto;
+            }
+            .preview-header {
+              border-bottom: 1px solid #334155;
+              padding-bottom: 16px;
+              margin-bottom: 24px;
+            }
+            .card {
+              background: #1e293b;
+              border: 1px solid #334155;
+              border-radius: 12px;
+              padding: 24px;
+              margin-bottom: 20px;
+              box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            }
+            .btn {
+              padding: 8px 16px;
+              border-radius: 6px;
+              font-weight: 600;
+              cursor: pointer;
+              border: none;
+              margin-right: 8px;
+              transition: all 0.2s;
+            }
+            .btn-primary {
+              background-color: #3b82f6;
+              color: white;
+            }
+            .btn-secondary {
+              background-color: #475569;
+              color: #f8fafc;
+            }
+            .form-group {
+              margin-bottom: 16px;
+            }
+            .form-label {
+              display: block;
+              margin-bottom: 6px;
+              font-size: 14px;
+              color: #94a3b8;
+            }
+            .form-input {
+              width: 100%;
+              padding: 8px 12px;
+              background: #0f172a;
+              border: 1px solid #334155;
+              border-radius: 6px;
+              color: white;
+              box-sizing: border-box;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="preview-container">
+            <header class="preview-header">
+              <h1>CSS Styling Showcase</h1>
+              <p>Your CSS is injected directly into this document. Use selectors like <code>body</code>, <code>.card</code>, <code>.btn</code>, <code>.btn-primary</code>, etc. to style the components below.</p>
+            </header>
+            <main>
+              <div class="card">
+                <h2>Interactive Form Card</h2>
+                <p>Feel free to customize the inputs, card structure, and headers using your custom rules.</p>
+                <div class="form-group">
+                  <label class="form-label">Email Address</label>
+                  <input type="email" class="form-input" placeholder="you@example.com" />
+                </div>
+                <button class="btn btn-primary">Submit Action</button>
+                <button class="btn btn-secondary">Cancel</button>
+              </div>
+            </main>
+          </div>
+        </body>
+        </html>
+      `;
+    }
+    if (language === "javascript" || language === "typescript") {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              margin: 0;
+              padding: 16px;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              background: #0f172a;
+              color: #f8fafc;
+            }
+            #console-log-container {
+              margin-top: 20px;
+              padding: 12px;
+              background: #1e293b;
+              border-radius: 8px;
+              border: 1px solid #334155;
+              max-height: 250px;
+              overflow-y: auto;
+              font-family: monospace;
+              font-size: 12px;
+            }
+            .console-line {
+              margin: 4px 0;
+              border-bottom: 1px solid #334155;
+              padding-bottom: 4px;
+              white-space: pre-wrap;
+              word-break: break-all;
+            }
+            .console-log { color: #38bdf8; }
+            .console-error { color: #f43f5e; }
+            .console-warn { color: #fbbf24; }
+          </style>
+          <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        </head>
+        <body>
+          <div id="app"></div>
+          <div id="console-log-container">
+            <div style="font-weight: bold; color: #94a3b8; border-bottom: 1px solid #475569; padding-bottom: 4px; margin-bottom: 6px;">Console Logs:</div>
+          </div>
+          <script>
+            (function() {
+              const container = document.getElementById('console-log-container');
+              function appendLog(args, type) {
+                const line = document.createElement('div');
+                line.className = 'console-line console-' + type;
+                line.textContent = args.map(arg => {
+                  if (typeof arg === 'object') {
+                    try { return JSON.stringify(arg, null, 2); } catch(e) {}
+                  }
+                  return String(arg);
+                }).join(' ');
+                container.appendChild(line);
+                container.scrollTop = container.scrollHeight;
+              }
+              const originalLog = console.log;
+              const originalError = console.error;
+              const originalWarn = console.warn;
+              console.log = (...args) => { originalLog(...args); appendLog(args, 'log'); };
+              console.error = (...args) => { originalError(...args); appendLog(args, 'error'); };
+              console.warn = (...args) => { originalWarn(...args); appendLog(args, 'warn'); };
+              window.addEventListener('error', (e) => {
+                appendLog([e.message], 'error');
+              });
+            })();
+          </script>
+          <script type="text/babel" data-presets="typescript">
+            ${code}
+          </script>
+        </body>
+        </html>
+      `;
+    }
+    if (language === "python") {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              margin: 0;
+              padding: 16px;
+              font-family: monospace;
+              background: #0f172a;
+              color: #f8fafc;
+              font-size: 13px;
+            }
+            #status {
+              color: #38bdf8;
+              margin-bottom: 12px;
+            }
+            #output {
+              white-space: pre-wrap;
+              word-break: break-all;
+            }
+            .error { color: #f43f5e; }
+          </style>
+          <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+        </head>
+        <body>
+          <div id="status">Loading Python runtime (Pyodide)...</div>
+          <pre id="output"></pre>
+          <script>
+            const statusDiv = document.getElementById('status');
+            const outputPre = document.getElementById('output');
+            
+            function print(text, isError = false) {
+              const span = document.createElement('span');
+              if (isError) span.className = 'error';
+              span.textContent = text + '\\n';
+              outputPre.appendChild(span);
+            }
+
+            async function main() {
+              try {
+                let pyodide = await loadPyodide({
+                  stdout: (text) => print(text),
+                  stderr: (text) => print(text, true)
+                });
+                statusDiv.textContent = 'Python runtime loaded. Executing...';
+                
+                setTimeout(() => {
+                  statusDiv.style.display = 'none';
+                }, 1000);
+
+                await pyodide.runPythonAsync(${JSON.stringify(code)});
+              } catch (err) {
+                statusDiv.style.display = 'none';
+                print(err.message, true);
+              }
+            }
+            main();
+          </script>
+        </body>
+        </html>
+      `;
+    }
+    return `
+      <!DOCTYPE html>
+      <html>
+      <body style="background: #0f172a; color: #94a3b8; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+        <div>No preview available for ${language}</div>
+      </body>
+      </html>
+    `;
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[#0d0e12] text-foreground font-sans overflow-hidden">
       {/* Premium Top Bar Navbar */}
@@ -615,6 +868,18 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
                 <Terminal className="w-4 h-4" />
                 Console
               </button>
+              {/* <button
+                onClick={() => setActiveTab("preview")}
+                className={cn(
+                  "flex-1 py-3 px-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 border-b-2",
+                  activeTab === "preview"
+                    ? "text-brand border-brand bg-[#1b1c28]"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-[#181922]/55"
+                )}
+              >
+                <Eye className="w-4 h-4" />
+                Preview
+              </button> */}
             </div>
           </div>
 
@@ -772,6 +1037,34 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
                       </p>
                     );
                   })}
+                </div>
+              </div>
+            )}
+            {activeTab === "preview" && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-border/20 flex items-center justify-between shrink-0 bg-[#151620]">
+                  <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                    Interactive Preview ({language})
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPreviewKey(prev => prev + 1)}
+                      className="h-7 px-2 text-[10px] text-brand hover:bg-brand/10 hover:text-brand"
+                    >
+                      Refresh Preview
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex-1 bg-white relative">
+                  <iframe
+                    key={previewKey}
+                    srcDoc={getPreviewContent()}
+                    sandbox="allow-scripts allow-modals"
+                    className="w-full h-full border-0 bg-slate-900"
+                    title="CodeBuddy Live Preview"
+                  />
                 </div>
               </div>
             )}

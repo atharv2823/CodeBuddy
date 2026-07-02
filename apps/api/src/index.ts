@@ -71,6 +71,15 @@ app.get("/", (req, res) => {
     res.json({ status: "success", message: "CodeBuddy API is running" });
 });
 
+// Health check endpoint for deployment monitoring
+app.get("/health", (req, res) => {
+    res.json({
+        status: "healthy",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Proxy route to AI Service
 app.post("/api/ai/chat", async (req, res) => {
     try {
