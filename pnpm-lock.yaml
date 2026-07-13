@@ -66,6 +66,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@google/genai':
+        specifier: ^2.8.0
+        version: 2.8.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))
       '@prisma/client':
         specifier: ^6.8.0
         version: 6.19.3(prisma@6.19.3(typescript@6.0.3))(typescript@6.0.3)

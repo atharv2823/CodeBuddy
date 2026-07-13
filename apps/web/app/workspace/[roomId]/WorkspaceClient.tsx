@@ -232,7 +232,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   // Handle local code changes
   const handleEditorChange = (value: string | undefined) => {
     const updatedCode = value || "";
-    
+
     // Prevent feedback loops
     if (isIncomingChangeRef.current) {
       isIncomingChangeRef.current = false;
@@ -1023,13 +1023,13 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
                     const isError = output.startsWith("❌") || output.startsWith("[ERROR]");
                     const isSuccess = output.startsWith("✔");
                     return (
-                      <p 
-                        key={idx} 
+                      <p
+                        key={idx}
                         className={
-                          isError 
-                            ? "text-red-400 font-semibold" 
-                            : isSuccess 
-                              ? "text-brand" 
+                          isError
+                            ? "text-red-400 font-semibold"
+                            : isSuccess
+                              ? "text-brand"
                               : "text-zinc-300"
                         }
                       >

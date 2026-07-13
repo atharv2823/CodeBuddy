@@ -8,6 +8,7 @@ import cors from "cors";
 
 import userRoutes from "./routes/user.routes";
 import roomRoutes from "./routes/room.routes";
+import aiRoutes from "./routes/ai.routes";
 
 const app: Express = express();
 
@@ -80,34 +81,10 @@ app.get("/health", (req, res) => {
     });
 });
 
-// Proxy route to AI Service
-app.post("/api/ai/chat", async (req, res) => {
-    try {
-        const aiServiceUrl = process.env.AI_SERVICE_URL || "http://localhost:5001";
-        const response = await fetch(`${aiServiceUrl}/ai/chat`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(req.body),
-        });
-
-        if (!response.ok) {
-            const errText = await response.text();
-            return res.status(response.status).json({ error: errText });
-        }
-
-        const data = await response.json();
-        return res.json(data);
-    } catch (error: any) {
-        console.error("Error proxying to AI service:", error);
-        return res.status(500).json({ error: "AI Service is currently offline or unreachable." });
-    }
-});
-
 // Register Modular API Routers
 app.use("/api/users", userRoutes);
 app.use("/api/rooms", roomRoutes);
+app.use("/api/ai", aiRoutes);
 
 if (!process.env.VERCEL) {
     server.listen(5000, () => {
