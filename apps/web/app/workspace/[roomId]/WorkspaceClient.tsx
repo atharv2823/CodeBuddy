@@ -20,6 +20,7 @@ import {
   Bot,
   Send,
   Eye,
+  Users,
 } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
@@ -43,11 +44,22 @@ interface AiMessage {
 
 export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   const router = useRouter();
-  const [code, setCode] = useState<string>("// Happy coding! Start collaborating in real-time.\n");
+  const [code, setCode] = useState<string>(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CodeBuddy Workspace</title>
+</head>
+<body>
+  <h1>Hello from CodeBuddy!</h1>
+  <p>Start collaborating in real-time.</p>
+</body>
+</html>`);
   const [copied, setCopied] = useState(false);
-  const [language, setLanguage] = useState("typescript");
+  const [language, setLanguage] = useState("html");
   const [roomName, setRoomName] = useState("Collaborative Room");
   const [connected, setConnected] = useState(false);
+  const [roomUsers, setRoomUsers] = useState<any[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
   const isIncomingChangeRef = useRef(false);
@@ -192,7 +204,10 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
 
     socket.on("connect", () => {
       setConnected(true);
-      socket.emit("join-room", roomId);
+      socket.emit("join-room", {
+        roomId,
+        username: userProfile.username,
+      });
     });
 
     socket.on("disconnect", () => {
@@ -203,6 +218,11 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     socket.on("receive-code", (receivedCode: string) => {
       isIncomingChangeRef.current = true;
       setCode(receivedCode);
+    });
+
+    // Listen to active users list
+    socket.on("room-users", (users: any[]) => {
+      setRoomUsers(users);
     });
 
     // Listen to room chat history
@@ -218,7 +238,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
     return () => {
       socket.disconnect();
     };
-  }, [roomId]);
+  }, [roomId, userProfile.username]);
 
   // Scroll to bottom of chat when new messages arrive
   useEffect(() => {
@@ -726,6 +746,15 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
                 <span className="text-[10px] text-muted-foreground">
                   {connected ? "Connected" : "Disconnected"}
                 </span>
+                {connected && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                    <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+                      <Users className="w-3 h-3 text-brand" />
+                      {roomUsers.length} {roomUsers.length === 1 ? "member" : "members"} joined
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
