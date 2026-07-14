@@ -97,3 +97,53 @@ export const deleteRoom = async (req: Request, res: Response) => {
         return res.status(500).json({ error: error.message });
     }
 };
+
+export const addRoomMember = async (req: Request, res: Response) => {
+    const roomId = req.params.id as string;
+    const userId = req.body.userId as string;
+    if (!roomId || !userId) {
+        return res.status(400).json({ error: "roomId and userId are required" });
+    }
+    try {
+        const existing = await prisma.roomMember.findFirst({
+            where: { roomId, userId },
+        });
+        if (existing) {
+            return res.json({ message: "User is already a member of this room", member: existing });
+        }
+
+        const member = await prisma.roomMember.create({
+            data: {
+                roomId,
+                userId,
+            },
+            include: {
+                user: true,
+                room: true,
+            }
+        });
+        return res.json({ message: "Member joined successfully", member });
+    } catch (error: any) {
+        console.error("Error adding room member:", error);
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+export const getRoomMembers = async (req: Request, res: Response) => {
+    const roomId = req.params.id as string;
+    if (!roomId) {
+        return res.status(400).json({ error: "roomId is required" });
+    }
+    try {
+        const members = await prisma.roomMember.findMany({
+            where: { roomId },
+            include: {
+                user: true,
+            },
+        }) as any[];
+        return res.json(members.map(m => m.user));
+    } catch (error: any) {
+        console.error("Error fetching room members:", error);
+        return res.status(500).json({ error: error.message });
+    }
+};

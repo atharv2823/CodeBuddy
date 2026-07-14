@@ -31,10 +31,40 @@ interface ChatMessage {
     time: string;
 }
 const roomChats: Record<string, ChatMessage[]> = {};
+const roomUsers: Record<string, { socketId: string; username: string }[]> = {};
 
 io.on("connection", (socket) => {
-    socket.on("join-room", (roomId) => {
+    socket.on("join-room", (data) => {
+        // Handle both object payload { roomId, username } and string payload roomId
+        let roomId = "";
+        let username = "Guest";
+
+        if (data && typeof data === "object") {
+            roomId = data.roomId;
+            username = data.username || "Guest";
+        } else if (typeof data === "string") {
+            roomId = data;
+        }
+
+        if (!roomId) return;
+
         socket.join(roomId);
+        // Save metadata on socket instance for disconnection handling
+        socket.data = { roomId, username };
+
+        let users = roomUsers[roomId];
+        if (!users) {
+            users = [];
+            roomUsers[roomId] = users;
+        }
+        
+        // Add to active users if not already present
+        if (!users.some(u => u.socketId === socket.id)) {
+            users.push({ socketId: socket.id, username });
+        }
+
+        // Broadcast updated users list to all room members
+        io.to(roomId).emit("room-users", users);
 
         // Emit chat history to user on join
         if (roomChats[roomId]) {
@@ -64,6 +94,16 @@ io.on("connection", (socket) => {
 
         // Broadcast message to everyone in the room (including sender)
         io.to(data.roomId).emit("receive-chat-message", data);
+    });
+
+    socket.on("disconnect", () => {
+        if (socket.data && socket.data.roomId) {
+            const { roomId, username } = socket.data;
+            if (roomUsers[roomId]) {
+                roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
+                io.to(roomId).emit("room-users", roomUsers[roomId]);
+            }
+        }
     });
 });
 

@@ -61,6 +61,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   const [roomName, setRoomName] = useState("Collaborative Room");
   const [connected, setConnected] = useState(false);
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
+  const [joinedMembers, setJoinedMembers] = useState<any[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
   const isIncomingChangeRef = useRef(false);
@@ -72,7 +73,8 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   const [previewKey, setPreviewKey] = useState(0);
 
   // User details
-  const [userProfile, setUserProfile] = useState<{ username: string; email: string }>({
+  const [userProfile, setUserProfile] = useState<{ id: string; username: string; email: string }>({
+    id: "",
     username: "Developer",
     email: "",
   });
@@ -157,6 +159,19 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   };
 
   useEffect(() => {
+    // Helper to fetch joined members from database
+    const fetchRoomMembers = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms/${roomId}/members`);
+        if (res.ok) {
+          const data = await res.json();
+          setJoinedMembers(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch room members:", err);
+      }
+    };
+
     // 1. Fetch User Profile
     const fetchUserProfile = async () => {
       try {
@@ -166,13 +181,55 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
           const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/check?email=${encodeURIComponent(userEmail)}`);
           if (res.ok) {
             const data = await res.json();
-            if (data.exists && data.user) {
+            let finalUser = data.user;
+            
+            if (!data.exists) {
+              try {
+                const defaultName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split("@")[0];
+                const createRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    email: userEmail,
+                    username: defaultName.replace(/\s+/g, "").toLowerCase(),
+                    role: "Developer",
+                  }),
+                });
+                if (createRes.ok) {
+                  finalUser = await createRes.json();
+                }
+              } catch (createErr) {
+                console.error("Failed to auto-create user in MongoDB:", createErr);
+              }
+            }
+
+            if (finalUser) {
               setUserProfile({
-                username: data.user.username,
+                id: finalUser.id,
+                username: finalUser.username,
                 email: userEmail,
               });
+
+              // Store this user as a RoomMember in the database
+              try {
+                const joinRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms/${roomId}/members`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ userId: finalUser.id }),
+                });
+                if (joinRes.ok) {
+                  await fetchRoomMembers();
+                }
+              } catch (memberErr) {
+                console.error("Failed to store room member:", memberErr);
+              }
             } else {
               setUserProfile({
+                id: "",
                 username: session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split("@")[0],
                 email: userEmail,
               });
@@ -184,6 +241,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
       }
     };
     fetchUserProfile();
+    fetchRoomMembers();
 
     // 2. Fetch Room Name from backend
     const fetchRoomDetails = async () => {
@@ -750,10 +808,42 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
                 {connected && (
                   <>
                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-                      <Users className="w-3 h-3 text-brand" />
-                      {roomUsers.length} {roomUsers.length === 1 ? "member" : "members"} joined
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 shrink-0">
+                        <Users className="w-3 h-3 text-brand" />
+                        {roomUsers.length} active:
+                      </span>
+                      <div className="flex items-center gap-1 overflow-x-auto max-w-[120px] sm:max-w-[180px] no-scrollbar">
+                        {roomUsers.map((u, i) => (
+                          <span
+                            key={u.socketId || i}
+                            className="text-[9px] bg-brand/15 text-brand px-1.5 py-0.5 rounded border border-brand/25 font-semibold shrink-0"
+                          >
+                            {u.username}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {joinedMembers.length > 0 && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 shrink-0">
+                        {joinedMembers.length} joined:
+                      </span>
+                      <div className="flex items-center gap-1 overflow-x-auto max-w-[120px] sm:max-w-[180px] no-scrollbar">
+                        {joinedMembers.map((m, i) => (
+                          <span
+                            key={m.id || i}
+                            className="text-[9px] bg-muted-foreground/10 text-muted-foreground px-1.5 py-0.5 rounded border border-border/30 shrink-0"
+                          >
+                            {m.username}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
