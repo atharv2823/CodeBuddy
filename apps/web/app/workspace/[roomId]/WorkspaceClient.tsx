@@ -55,6 +55,7 @@ export default function WorkspaceClient({ roomId }: WorkspaceClientProps) {
   <p>Start collaborating in real-time.</p>
 </body>
 </html>`);
+
   const [copied, setCopied] = useState(false);
   const [language, setLanguage] = useState("html");
   const [roomName, setRoomName] = useState("Collaborative Room");

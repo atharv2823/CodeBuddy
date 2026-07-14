@@ -1,4 +1,5 @@
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
+import { UserAvatar } from "@/components/dashboard/user-avatar";
 
 export default function DashboardLayout({
   children,
@@ -13,9 +14,7 @@ export default function DashboardLayout({
         <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-6 border-b border-border/50 bg-background/80 backdrop-blur-xl">
           <h1 className="text-lg font-semibold">Dashboard</h1>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-xs font-bold text-white">
-              U
-            </div>
+            <UserAvatar />
           </div>
         </header>
         <div className="p-6">{children}</div>

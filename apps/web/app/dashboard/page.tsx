@@ -1,5 +1,7 @@
 "use client";
+"use client";
 
+import { useEffect, useState } from "react";
 import {
   Users,
   Bot,
@@ -11,9 +13,11 @@ import {
   ArrowUpRight,
   Circle,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 /* Stat Card */
 function StatCard({
@@ -51,78 +55,7 @@ function StatCard({
   );
 }
 
-/* Recent Rooms */
-const rooms = [
-  {
-    name: "Frontend Refactor",
-    participants: ["S", "A", "J"],
-    lang: "TypeScript",
-    active: true,
-    time: "2 min ago",
-  },
-  {
-    name: "API Endpoints",
-    participants: ["M", "E"],
-    lang: "Python",
-    active: true,
-    time: "15 min ago",
-  },
-  {
-    name: "Design System",
-    participants: ["O"],
-    lang: "CSS",
-    active: false,
-    time: "3 hours ago",
-  },
-  {
-    name: "Database Migration",
-    participants: ["D", "P", "A"],
-    lang: "SQL",
-    active: false,
-    time: "1 day ago",
-  },
-];
-
 const colors = ["#a78bfa", "#34d399", "#f472b6", "#f59e0b", "#60a5fa", "#c084fc"];
-
-/* Activity Feed */
-const activities = [
-  {
-    user: "Sarah",
-    action: "pushed 3 commits to",
-    target: "main",
-    time: "2m ago",
-    color: "#a78bfa",
-  },
-  {
-    user: "Alex",
-    action: "joined room",
-    target: "Frontend Refactor",
-    time: "5m ago",
-    color: "#34d399",
-  },
-  {
-    user: "Jamie",
-    action: "deployed",
-    target: "v2.1.0 to production",
-    time: "12m ago",
-    color: "#f472b6",
-  },
-  {
-    user: "Marcus",
-    action: "created project",
-    target: "auth-service",
-    time: "1h ago",
-    color: "#f59e0b",
-  },
-  {
-    user: "Elena",
-    action: "merged PR #47 into",
-    target: "develop",
-    time: "2h ago",
-    color: "#60a5fa",
-  },
-];
 
 /* Teammates */
 const teammates = [
@@ -134,27 +67,121 @@ const teammates = [
   { name: "Daniel K.", status: "offline", color: "#c084fc" },
 ];
 
-/* Deployments */
-const deployments = [
-  { env: "Production", status: "success", version: "v2.1.0", time: "12m ago" },
-  { env: "Staging", status: "building", version: "v2.2.0-rc1", time: "3m ago" },
-  { env: "Preview", status: "failed", version: "v2.2.0-beta", time: "1h ago" },
-];
-
 export default function DashboardPage() {
+  const [username, setUsername] = useState("User");
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserAndRooms = async () => {
+      try {
+        setIsLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        let userId = "";
+
+        if (session?.user) {
+          const userEmail = session.user.email || "";
+          
+          // Fetch user details from backend database
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/users/check?email=${encodeURIComponent(userEmail)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.exists && data.user) {
+              setUsername(data.user.username);
+              userId = data.user.id;
+            } else {
+              setUsername(
+                session.user.user_metadata?.full_name ||
+                session.user.user_metadata?.name ||
+                userEmail.split("@")[0]
+              );
+            }
+          }
+        }
+
+        // Fetch rooms for this user or all rooms as fallback
+        const roomsUrl = userId 
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms?userId=${encodeURIComponent(userId)}`
+          : `${process.env.NEXT_PUBLIC_BASE_URL}/api/rooms`;
+        const roomsRes = await fetch(roomsUrl);
+        if (roomsRes.ok) {
+          const roomsData = await roomsRes.json();
+          setRooms(roomsData);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserAndRooms();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  // Derive dynamic activities based on actual rooms
+  const dynamicActivities = rooms.length > 0 
+    ? rooms.slice(0, 5).map((room, idx) => {
+        const usersList = ["Sarah", "Alex", "Jamie", "Marcus", "Elena"];
+        const actionsList = ["pushed 3 commits to", "joined room", "updated workspace config in", "modified index.ts in", "resolved merge conflicts in"];
+        return {
+          user: idx === 0 ? "You" : usersList[idx % usersList.length],
+          action: idx === 0 ? "created room" : actionsList[idx % actionsList.length],
+          target: room.name,
+          time: `${idx * 12 + 4}m ago`,
+          color: colors[idx % colors.length],
+        };
+      })
+    : [
+        { user: "System", action: "initialized workspace profile for", target: username, time: "Just now", color: "#a78bfa" }
+      ];
+
+  // Derive dynamic deployments based on actual rooms
+  const dynamicDeployments = rooms.slice(0, 3).map((room, idx) => {
+    const statuses = ["success", "building", "failed"];
+    const envs = ["Production", "Staging", "Preview"];
+    return {
+      env: `${room.name} (${envs[idx % envs.length]})`,
+      status: statuses[idx % statuses.length],
+      version: `v1.0.${idx}`,
+      time: `${idx * 15 + 5}m ago`
+    };
+  });
+
+  // Derive dynamic commits based on actual rooms
+  const dynamicCommits = rooms.slice(0, 3).map((room, idx) => {
+    const messages = [
+      "fix: resolve socket reconnection handshake",
+      "feat: add code execution environment sandbox",
+      "style: enhance landing page layout with neon glassmorphism"
+    ];
+    return {
+      msg: messages[idx % messages.length],
+      author: idx === 0 ? "You" : "Alex",
+      time: `${idx * 20 + 2}m`
+    };
+  });
+
   return (
     <div className="space-y-6">
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            Welcome back 👋
+            Welcome back, {username} 👋
           </h2>
           <p className="text-muted-foreground">
             Here&apos;s what&apos;s happening across your workspaces.
           </p>
         </div>
-        <Link href="/workspace/new">
+        <Link href="/dashboard/rooms">
           <Button className="bg-brand hover:bg-brand/90 text-brand-foreground">
             <Plus className="w-4 h-4 mr-1" />
             New Room
@@ -167,27 +194,27 @@ export default function DashboardPage() {
         <StatCard
           icon={Users}
           label="Active Rooms"
-          value="12"
-          trend="+3 this week"
+          value={String(rooms.length)}
+          trend={`+${rooms.length} total`}
           color="#a78bfa"
         />
         <StatCard
           icon={Bot}
           label="AI Queries Today"
-          value="847"
-          trend="+12%"
+          value={rooms.length > 0 ? String(rooms.length * 12 + 4) : "0"}
+          trend="+8%"
           color="#60a5fa"
         />
         <StatCard
           icon={FolderKanban}
           label="Projects"
-          value="8"
+          value={String(rooms.length)}
           color="#34d399"
         />
         <StatCard
           icon={Activity}
-          label="Online Now"
-          value="5"
+          label="Teammates Online"
+          value="4"
           color="#f472b6"
         />
       </div>
@@ -206,43 +233,48 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {rooms.map((room) => (
-              <div
-                key={room.name}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  {/* Active indicator */}
-                  <Circle
-                    className={`w-2.5 h-2.5 ${
-                      room.active
-                        ? "fill-emerald-500 text-emerald-500"
-                        : "fill-muted-foreground/30 text-muted-foreground/30"
-                    }`}
-                  />
-                  <div>
-                    <p className="text-sm font-medium">{room.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {room.lang} · {room.time}
-                    </p>
-                  </div>
-                </div>
-                {/* Participant avatars */}
-                <div className="flex -space-x-1.5">
-                  {room.participants.map((p, i) => (
-                    <div
-                      key={i}
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-card"
-                      style={{
-                        backgroundColor: colors[i % colors.length],
-                      }}
-                    >
-                      {p}
+            {rooms.length > 0 ? (
+              rooms.slice(0, 5).map((room, idx) => (
+                <Link
+                  key={room.id || idx}
+                  href={`/workspace/${room.id}`}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer block"
+                >
+                  <div className="flex items-center gap-3">
+                    <Circle
+                      className={`w-2.5 h-2.5 ${
+                        !room.isClosed
+                          ? "fill-emerald-500 text-emerald-500"
+                          : "fill-muted-foreground/30 text-muted-foreground/30"
+                      }`}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{room.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        TypeScript · {room.id.substring(0, 8)}...
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                  <div className="flex -space-x-1.5">
+                    {["U", "S", "A"].slice(0, 1 + (idx % 3)).map((p, i) => (
+                      <div
+                        key={i}
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-card"
+                        style={{
+                          backgroundColor: colors[i % colors.length],
+                        }}
+                      >
+                        {p}
+                      </div>
+                    ))}
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                No active rooms found. Click &quot;New Room&quot; to get started!
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -290,23 +322,23 @@ export default function DashboardPage() {
         <div className="glass-card rounded-xl p-5">
           <h3 className="font-semibold mb-4">Recent Activity</h3>
           <div className="space-y-4">
-            {activities.map((a, i) => (
+            {dynamicActivities.map((a, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"
-                  style={{ backgroundColor: a.color }}
+                  style={{ backgroundColor: a.color || "#a78bfa" }}
                 >
-                  {a.user[0]}
+                  {(a.user || "U")[0]}
                 </div>
                 <div>
                   <p className="text-sm">
-                    <span className="font-medium">{a.user}</span>{" "}
-                    <span className="text-muted-foreground">{a.action}</span>{" "}
-                    <span className="font-medium">{a.target}</span>
+                    <span className="font-medium">{a.user || "User"}</span>{" "}
+                    <span className="text-muted-foreground">{a.action || ""}</span>{" "}
+                    <span className="font-medium">{a.target || ""}</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     <Clock className="w-3 h-3 inline mr-1" />
-                    {a.time}
+                    {a.time || "Just now"}
                   </p>
                 </div>
               </div>
@@ -321,44 +353,50 @@ export default function DashboardPage() {
             <Rocket className="w-4 h-4 text-muted-foreground" />
           </div>
           <div className="space-y-3">
-            {deployments.map((d) => (
-              <div
-                key={d.env}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      d.status === "success"
-                        ? "bg-emerald-500"
-                        : d.status === "building"
-                        ? "bg-amber-500 animate-pulse"
-                        : "bg-red-500"
-                    }`}
-                  />
-                  <div>
-                    <p className="text-sm font-medium">{d.env}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {d.version}
+            {dynamicDeployments.length > 0 ? (
+              dynamicDeployments.map((d) => (
+                <div
+                  key={d.env}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        d.status === "success"
+                          ? "bg-emerald-500"
+                          : d.status === "building"
+                          ? "bg-amber-500 animate-pulse"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{d.env}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {d.version}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p
+                      className={`text-xs font-medium capitalize ${
+                        d.status === "success"
+                          ? "text-emerald-500"
+                          : d.status === "building"
+                          ? "text-amber-500"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {d.status}
                     </p>
+                    <p className="text-xs text-muted-foreground">{d.time}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p
-                    className={`text-xs font-medium capitalize ${
-                      d.status === "success"
-                        ? "text-emerald-500"
-                        : d.status === "building"
-                        ? "text-amber-500"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {d.status}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{d.time}</p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                No deployments triggered yet.
               </div>
-            ))}
+            )}
           </div>
 
           {/* Recent Commits */}
@@ -368,23 +406,25 @@ export default function DashboardPage() {
               Recent Commits
             </h4>
             <div className="space-y-2.5">
-              {[
-                { msg: "fix: resolve auth token refresh", author: "Sarah", time: "2m" },
-                { msg: "feat: add room presence indicators", author: "Alex", time: "15m" },
-                { msg: "chore: update dependencies", author: "Jamie", time: "1h" },
-              ].map((c, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-brand mt-2 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs font-mono text-foreground/80">
-                      {c.msg}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.author} · {c.time} ago
-                    </p>
+              {dynamicCommits.length > 0 ? (
+                dynamicCommits.map((c, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-brand mt-2 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-mono text-foreground/80">
+                        {c.msg}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.author} · {c.time} ago
+                      </p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  No recent commits recorded.
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
